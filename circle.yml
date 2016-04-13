@@ -1,0 +1,33 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  pre:
+    - docker info
+    - docker version
+    - sudo apt-get install s3cmd
+    - curl -L https://github.com/appc/acbuild/releases/download/v0.2.2/acbuild.tar.gz | sudo tar -xz -C /usr/local/bin/
+    - echo -e $GPG_SECRET_KEY | gpg --import -
+  override:
+    - ./build.sh
+    - docker tag -f hitch:1.1.1 desource/hitch:1.1.1
+    - docker tag -f hitch:1.1.1 desource/hitch:1.1
+    - docker tag -f hitch:1.1.1 quay.io/desource/hitch:1.1.1
+    - docker tag -f hitch:1.1.1 quay.io/desource/hitch:1.1
+
+test:
+  override:
+    - docker run -it hitch:1.1.1 -V | grep -qi 1.1.1
+
+deployment:
+  production:
+    branch: master
+    commands:
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASSWORD
+      - docker push desource/hitch
+      - docker login -e $QUAY_EMAIL -u $QUAY_USER -p $QUAY_PASSWORD quay.io
+      - docker push quay.io/desource/hitch
+      - echo -e "[default]\naccess_key = $S3_ACCESS_KEY\nsecret_key = $S3_SECRET_KEY\nuse_https = True\n" > ~/.s3cfg
+      - s3cmd --acl-public sync hitch s3://desource.net/desource.net/:
+          pwd: build

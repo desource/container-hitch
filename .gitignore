@@ -1,0 +1,6 @@
+*.aci
+.DS_Store
+
+/bin
+/build
+/tmp
